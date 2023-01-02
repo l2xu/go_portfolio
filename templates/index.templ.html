@@ -1,0 +1,15 @@
+{{ define "content" }}
+
+<head>
+    <link rel="stylesheet" type="text/css" href="/static/stylesheets/main.css">
+    <title>INDEX</title>
+</head>
+
+<h1>Index </h1>
+<ul>
+    {{ range . }}
+    <li><a href="/projects/{{.Title}}">{{ .Title }}
+        </a></li>
+    {{ end }}
+</ul>
+{{ end }}
