@@ -131,3 +131,16 @@ func loadPages(src string) (Pages, error) {
 	}
 	return ps, nil
 }
+
+// a function that export all files in a directory
+func exportFiles(w http.ResponseWriter, r *http.Request) {
+	dir := "./projects"
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, file := range files {
+		http.ServeFile(w, r, dir+"/"+file.Name())
+	}
+}

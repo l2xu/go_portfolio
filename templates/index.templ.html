@@ -1,15 +1,52 @@
 {{ define "content" }}
 
 <head>
-    <link rel="stylesheet" type="text/css" href="/static/stylesheets/main.css">
+    <link rel="stylesheet" type="text/css" href="/static/stylesheets/index.css">
     <title>INDEX</title>
 </head>
 
-<h1>Index </h1>
-<ul>
-    {{ range . }}
-    <li><a href="/projects/{{.Title}}">{{ .Title }}
-        </a></li>
-    {{ end }}
-</ul>
+<body>
+    <div class="wrapper">
+        <div class="left_container">
+            <div class="content content_left">
+                <h1>Lukas Weihrauch</h1>
+                <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ex ratione beatae perspiciatis. Aut
+                    assumenda ipsam corporis quisquam temporibus rem repellendus vel aperiam! Unde amet perspiciatis
+                    quisquam earum modi consectetur quis quod voluptas. Minima, ad sint doloribus alias quibusdam, fuga
+                    dolor placeat nesciunt commodi, est assumenda praesentium adipisci! Voluptates inventore numquam
+                    quam voluptatum rerum, eaque quis nisi labore veritatis officiis libero perspiciatis unde esse
+                    veniam, accusantium fugiat est quibusdam similique repellat atque molestiae. Inventore velit
+                    doloribus alias blanditiis dolor perferendis quibusdam quam nihil necessitatibus ullam, cumque ab
+                    quod animi, veritatis laboriosam. Nesciunt minima quas ratione ad alias? Nemo delectus optio rem?
+                </p>
+            </div>
+
+        </div>
+        <div class="right_container">
+            <div class="content content_right">
+                <h1>Projects</h1>
+                <div class="projects_container">
+
+                    {{ range . }}
+                    <a href="/projects/{{.Title}}">
+                        <div class="project">
+                            {{ .Title }}
+
+                        </div>
+                    </a>
+                    {{ end }}
+
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+</body>
+
+
+
+
 {{ end }}
