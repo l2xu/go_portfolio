@@ -1,17 +1,35 @@
 {{ define "content" }}
 
 <head>
-    <title>{{.Title}}</title>
+    <link rel="stylesheet" type="text/css" href="/static/stylesheets/main.css">
+    <title>{{ .Title}}</title>
 </head>
 
 <body>
-    <div class="header">
-        <a href="/">Home </a>
-    </div>
+    <div class="wrapper">
+        <div class="left_container">
+            <div class="content content_left">
+                <h1>{{ .Title }}</h1>
+
+            </div>
+
+        </div>
+        <div class="right_container">
+            <div class="content content_right">
+
+                <div class="projects_container">
+
+                    Lorem ipsum dolor, sit amet consectetur adipisicing elit. Labore inventore asperiores incidunt esse
+                    hic fugit voluptatum temporibus id voluptatem modi.
 
 
-    {{ .Title }}
-    {{ .Content }}
+                </div>
+
+            </div>
+
+        </div>
 
 </body>
+
+
 {{ end }}
