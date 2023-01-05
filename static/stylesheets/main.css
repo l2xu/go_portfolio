@@ -6,8 +6,18 @@
 body{
     margin: 0;
     padding: 0;
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
     
 }
+
+a{
+    text-decoration: none;
+    color: var(--col-white);
+
+}
+
+
 
 .wrapper{
     display: grid;
@@ -21,26 +31,31 @@ body{
     background-color: var(--col-black);
     color: var(--col-white);
     display: grid;
+    padding-top: 1.5rem;
 }
 
 .content_left{
-    /* background-color: rgba(255, 255, 255, 0.618); */
     width: 900px;
-    
-    justify-self: end;
-    padding-right: 50px;
+    justify-self: center;
+    /* animation: fadeIn 1s linear; */
+
  
 }
 
 .right_container{
     background-color: var(--col-white);
     display: grid;
+    padding-top: 1.5rem;
+
 }
 
 .content_right{
     /* background-color: rgba(0, 255, 255, 0.205); */
     width: 900px;
-    padding-left: 50px;
+    justify-self: center;
+    /* animation: fadeIn 0.5s linear; */
+
+
 }
 
 @media screen and (max-width: 1900px){
@@ -107,3 +122,22 @@ body{
     }
 }
     
+
+
+
+/* Fade in animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(1%);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0%);
+      }
+  }
+  
+  /* Add animation to element */
+  .fade-in {
+    animation: fadeIn 1s linear;
+  }

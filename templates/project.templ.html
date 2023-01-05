@@ -2,25 +2,35 @@
 
 <head>
     <link rel="stylesheet" type="text/css" href="/static/stylesheets/main.css">
+    <link rel="stylesheet" type="text/css" href="/static/stylesheets/projects.css">
     <title>{{ .Title}}</title>
 </head>
 
 <body>
     <div class="wrapper">
         <div class="left_container">
-            <div class="content content_left">
-                <h1>{{ .Title }}</h1>
+            <div class="content_left">
+                <a href="../">
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                        <path fill="#ffffff" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                    </svg>
+                </a>
+
+                <h1 class="project_heading">{{ .Title }}</h1>
+                <div class="project_date">{{.Date}}</div>
+                <img class="project_image" src="{{ .Image_url}}">
+
 
             </div>
 
         </div>
         <div class="right_container">
-            <div class="content content_right">
+            <div class="content_right">
 
                 <div class="projects_container">
+                    <div class="indexh1">About the Project</div>
 
-                    Lorem ipsum dolor, sit amet consectetur adipisicing elit. Labore inventore asperiores incidunt esse
-                    hic fugit voluptatum temporibus id voluptatem modi.
+                    <div class="project_description">{{.Description}}</div>
 
 
                 </div>
