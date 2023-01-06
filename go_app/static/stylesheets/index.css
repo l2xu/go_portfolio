@@ -43,3 +43,30 @@
   margin-top: 2rem;
   font-size: 1.3rem;
 }
+
+.contact_container{
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 1rem;
+  align-items: center;
+  width: fit-content;
+}
+
+.heading_two{
+  margin-top: 4rem;
+}
+
+.social_container{
+  display: flex;
+  gap: 2rem;
+}
+
+
+@media screen and (max-width: 1100px){
+  .indexh1{
+    text-align: left;
+  }
+
+  
+}
+  

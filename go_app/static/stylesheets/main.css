@@ -7,7 +7,7 @@ body{
     margin: 0;
     padding: 0;
     font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    overflow: hidden;
+    overflow-x: hidden;
     
 }
 
@@ -34,13 +34,7 @@ a{
     padding-top: 1.5rem;
 }
 
-.content_left{
-    width: 900px;
-    justify-self: center;
-    /* animation: fadeIn 1s linear; */
 
- 
-}
 
 .right_container{
     background-color: var(--col-white);
@@ -49,76 +43,53 @@ a{
 
 }
 
-.content_right{
-    /* background-color: rgba(0, 255, 255, 0.205); */
+.content{
     width: 900px;
     justify-self: center;
-    /* animation: fadeIn 0.5s linear; */
 
 
 }
 
 @media screen and (max-width: 1900px){
  
-    .content_left{
+    .content{
         width: 800px;
    
     }
-    .content_right{
-        width: 800px;
-       
-    }
+
 }
 
 @media screen and (max-width: 1700px){
  
-    .content_left{
+    .content{
         width: 700px;
    
-    }
-    .content_right{
-        width: 700px;
-       
-    }
+   
 }
 
 @media screen and (max-width: 1500px){
  
-    .content_left{
+    .content{
         width: 600px;
    
-    }
-    .content_right{
-        width: 600px;
-       
-    }
+   
 }
 @media screen and (max-width: 1300px){
  
-    .content_left{
+    .content{
         width: 500px;
    
     }
-    .content_right{
-        width: 500px;
-       
-    }
+   
 }
 
 @media screen and (max-width: 1100px){
     .wrapper{
         grid-template-columns: 1fr;
     }
-    .content_left{
-        width: 100%;
-        padding: 0;
-
-
-    }
-    .content_right{
-        width: 100%;
-        padding: 0;
-
+    .content{
+        width: 95%;
+        padding-bottom: 3rem;
     }
 }
     

@@ -11,7 +11,6 @@ import (
 	"log"
 	"net/http"
 
-	// "os"
 	"path/filepath"
 	"time"
 
@@ -42,9 +41,17 @@ type Pages []Page
 var ps Pages
 
 func loadContent() {
+
+	//CHECK FOR ENV VARIABLE
+	// mongoURI, ok := os.LookupEnv("MONGO_URI")
+	// if !ok {
+	// 	log.Fatal("MONGO_URI environment variable not set")
+	// }
+
 	ctx, cancel := context.WithTimeout(
 		context.Background(), 10*time.Second)
 	defer cancel()
+	//replace with mongoUIR string
 	opt := options.Client().ApplyURI("mongodb://127.0.0.1:21017/")
 	client, err := mongo.Connect(ctx, opt)
 	if err != nil {

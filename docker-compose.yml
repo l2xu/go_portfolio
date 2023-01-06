@@ -1,0 +1,20 @@
+version: '3.7'
+
+services:
+  app:
+    build: ./go_app
+    ports:
+      - "9000:9000"
+    depends_on:
+      - db
+    environment:
+      - MONGO_URI=mongodb://db:27017
+  db:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
