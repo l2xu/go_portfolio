@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	// "encoding/json"
 	"flag"
 	"fmt"
 	"html/template"
@@ -29,11 +30,11 @@ var (
 
 // All the data that is needed for the template
 type Page struct {
-	Title       string
-	Short       string
-	Image_url   string
-	Description string
-	Date        string
+	Title       string `bson:"title"`
+	Short       string `bson:"short"`
+	Image_url   string `bson:"image_url"`
+	Description string `bson:"description"`
+	Date        string `bson:"date"`
 }
 
 type Pages []Page
@@ -64,34 +65,71 @@ func loadContent() {
 
 	myProjects := client.Database("go_portfolio").Collection("projects")
 
-	// Find all projects
+	// // Find all projects
 	cursor, err := myProjects.Find(context.TODO(), bson.M{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Iterate through the cursor and print the documents
-	var projects []bson.M
-	if err = cursor.All(context.TODO(), &projects); err != nil {
-		log.Fatal(err)
-	}
-	for _, project := range projects {
-		page := Page{}
-		title, ok := project["title"]
-		short, ok := project["short"]
-		image_url, ok := project["image_url"]
-		description, ok := project["description"]
-		date, ok := project["date"]
+	for cursor.Next(context.TODO()) {
 
-		if ok {
-			page.Title = title.(string)
-			page.Short = short.(string)
-			page.Image_url = image_url.(string)
-			page.Description = description.(string)
-			page.Date = date.(string)
-			ps = append(ps, page)
+		//SECOND TRY
+		// Decode the document into a JSON string
+		// var p Page
+		// err := cursor.Decode(&p)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+		// jsonData, err := bson.Marshal(p)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+
+		// // Unmarshal the JSON data into a struct
+		// var p2 Page
+		// err = bson.Unmarshal(jsonData, &p2)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+		// fmt.Println(p2.Title)
+		// ps = append(ps, p2)
+
+		var p Page
+		err := cursor.Decode(&p)
+		if err != nil {
+			log.Fatal(err)
 		}
+
+		ps = append(ps, p)
+
 	}
+
+	//FIRST TRY
+	// var projects []bson.M
+
+	// if err = cursor.All(context.TODO(), &projects); err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// Iterate through the cursor and print the documents
+
+	// for _, project := range projects {
+	// 	page := Page{}
+	// 	title, ok := project["title"]
+	// 	short, ok := project["short"]
+	// 	image_url, ok := project["image_url"]
+	// 	description, ok := project["description"]
+	// 	date, ok := project["date"]
+
+	// 	if ok {
+	// 		page.Title = title.(string)
+	// 		page.Short = short.(string)
+	// 		page.Image_url = image_url.(string)
+	// 		page.Description = description.(string)
+	// 		page.Date = date.(string)
+	// 		ps = append(ps, page)
+	// 	}
+	// }
 }
 
 // Start the server and handle the requests
@@ -140,7 +178,7 @@ func makePageHandler() http.HandlerFunc {
 		url = url[10:]
 
 		p, err := loadPage(url)
-		fmt.Print(p)
+		// fmt.Print(p)
 		if err != nil {
 			log.Println(err)
 		}
@@ -172,8 +210,8 @@ func renderPage(w io.Writer, data interface{}, content string) error {
 // here the struct get filled with data
 func loadPage(url string) (Page, error) {
 	var p Page
-	fmt.Println(url)
-	fmt.Print(ps)
+	// fmt.Println(url)
+	// fmt.Print(ps)
 
 	//search for the project in the struct
 	for _, page := range ps {
