@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"os"
+
 	// "encoding/json"
 	"flag"
 	"fmt"
@@ -41,6 +43,7 @@ type Pages []Page
 
 var ps Pages
 
+// Load the content from the mongodb and stores it in ps slice
 func loadContent() {
 
 	//CHECK FOR ENV VARIABLE
@@ -73,27 +76,6 @@ func loadContent() {
 
 	for cursor.Next(context.TODO()) {
 
-		//SECOND TRY
-		// Decode the document into a JSON string
-		// var p Page
-		// err := cursor.Decode(&p)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-		// jsonData, err := bson.Marshal(p)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-
-		// // Unmarshal the JSON data into a struct
-		// var p2 Page
-		// err = bson.Unmarshal(jsonData, &p2)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-		// fmt.Println(p2.Title)
-		// ps = append(ps, p2)
-
 		var p Page
 		err := cursor.Decode(&p)
 		if err != nil {
@@ -104,32 +86,37 @@ func loadContent() {
 
 	}
 
-	//FIRST TRY
-	// var projects []bson.M
+}
 
-	// if err = cursor.All(context.TODO(), &projects); err != nil {
-	// 	log.Fatal(err)
-	// }
+// Exports all sites to the ./out directory
+func staticExporter() {
 
-	// Iterate through the cursor and print the documents
+	//create the index
+	f, err := os.Create("./out/index.html")
+	if err != nil {
+		panic(err)
+	}
 
-	// for _, project := range projects {
-	// 	page := Page{}
-	// 	title, ok := project["title"]
-	// 	short, ok := project["short"]
-	// 	image_url, ok := project["image_url"]
-	// 	description, ok := project["description"]
-	// 	date, ok := project["date"]
+	renderPage(f, ps, "index.templ.html")
 
-	// 	if ok {
-	// 		page.Title = title.(string)
-	// 		page.Short = short.(string)
-	// 		page.Image_url = image_url.(string)
-	// 		page.Description = description.(string)
-	// 		page.Date = date.(string)
-	// 		ps = append(ps, page)
-	// 	}
-	// }
+	//create all other pages
+	//go through all projects
+	for _, p := range ps {
+		filename := fmt.Sprintf("./out/%s.html", p.Title)
+		f, err := os.Create(filename)
+		if err != nil {
+			panic(err)
+		}
+		renderPage(f, p, "project.templ.html")
+
+	}
+
+	//copy the static folder
+	err = copyDir("./static/", "out/static/")
+	if err != nil {
+		panic(err)
+	}
+
 }
 
 // Start the server and handle the requests
@@ -137,6 +124,7 @@ func loadContent() {
 func main() {
 
 	loadContent()
+	staticExporter()
 
 	flag.Parse()
 	fs := http.FileServer(http.Dir("./static"))
@@ -157,10 +145,7 @@ func main() {
 // Here the index page is created with the index.templ.html
 func makeIndexHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// ps, err := loadPages()
-		// if err != nil {
-		// 	log.Println(err)
-		// }
+
 		err := renderPage(w, ps, "index.templ.html")
 		if err != nil {
 			log.Println(err)
@@ -178,7 +163,7 @@ func makePageHandler() http.HandlerFunc {
 		url = url[10:]
 
 		p, err := loadPage(url)
-		// fmt.Print(p)
+
 		if err != nil {
 			log.Println(err)
 		}
@@ -191,27 +176,26 @@ func makePageHandler() http.HandlerFunc {
 
 // Here the template page is rendered
 func renderPage(w io.Writer, data interface{}, content string) error {
+
 	temp, err := template.ParseFiles(
-		filepath.Join(*tmpDir, "base.templ.html"),
 		filepath.Join(*tmpDir, content),
 	)
 
 	if err != nil {
 		return fmt.Errorf("renderPage.Parsefiles: %w", err)
 	}
-	err = temp.ExecuteTemplate(w, "base", data)
+	err = temp.ExecuteTemplate(w, content, data)
 
 	if err != nil {
 		return fmt.Errorf("renderPage.ExecuteTemplate: %w", err)
 	}
+
 	return nil
 }
 
 // here the struct get filled with data
 func loadPage(url string) (Page, error) {
 	var p Page
-	// fmt.Println(url)
-	// fmt.Print(ps)
 
 	//search for the project in the struct
 	for _, page := range ps {
@@ -226,4 +210,58 @@ func loadPage(url string) (Page, error) {
 	}
 
 	return p, nil
+}
+
+// This function copies the static folder
+func copyDir(src string, dst string) error {
+	// Create the destination directory
+	err := os.MkdirAll(dst, 0755)
+	if err != nil {
+		return err
+	}
+
+	// Walk through the source directory
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Compute the relative path of the file
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+
+		// Compute the destination path
+		dstPath := filepath.Join(dst, rel)
+
+		// Check if the file is a directory
+		if info.IsDir() {
+			// Create the directory
+			return os.MkdirAll(dstPath, info.Mode())
+		} else {
+			// Open the source file
+			srcFile, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer srcFile.Close()
+
+			// Create the destination file
+			dstFile, err := os.Create(dstPath)
+			if err != nil {
+				return err
+			}
+			defer dstFile.Close()
+
+			// Copy the file
+			_, err = io.Copy(dstFile, srcFile)
+			if err != nil {
+				return err
+			}
+
+			// Preserve the file's mode
+			return os.Chmod(dstPath, info.Mode())
+		}
+	})
 }
