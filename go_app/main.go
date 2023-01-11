@@ -26,7 +26,6 @@ import (
 )
 
 var (
-	srcDir = flag.String("src", "./projects", "Inhalte -Dir.")
 	tmpDir = flag.String("tmp", "./templates", "Template -Dir.")
 )
 
@@ -56,6 +55,7 @@ func loadContent() {
 		context.Background(), 10*time.Second)
 	defer cancel()
 	//replace with mongoUIR string
+	//"mongodb://127.0.0.1:21017/"
 	opt := options.Client().ApplyURI("mongodb://127.0.0.1:21017/")
 	client, err := mongo.Connect(ctx, opt)
 	if err != nil {
@@ -68,7 +68,7 @@ func loadContent() {
 
 	myProjects := client.Database("go_portfolio").Collection("projects")
 
-	// // Find all projects
+	//get all projects
 	cursor, err := myProjects.Find(context.TODO(), bson.M{})
 	if err != nil {
 		log.Fatal(err)
@@ -99,10 +99,13 @@ func staticExporter() {
 
 	renderPage(f, ps, "index.templ.html")
 
+	//create a directory for the projects
+	err = os.Mkdir("./out/projects", 0755)
+
 	//create all other pages
 	//go through all projects
 	for _, p := range ps {
-		filename := fmt.Sprintf("./out/%s.html", p.Title)
+		filename := fmt.Sprintf("./out/projects/%s.html", p.Title)
 		f, err := os.Create(filename)
 		if err != nil {
 			panic(err)
@@ -199,7 +202,10 @@ func loadPage(url string) (Page, error) {
 
 	//search for the project in the struct
 	for _, page := range ps {
-		if page.Title == url {
+		fmt.Print(page.Title)
+		peter := page.Title + ".html"
+
+		if peter == url {
 			p.Title = page.Title
 			p.Description = page.Description
 			p.Image_url = page.Image_url
