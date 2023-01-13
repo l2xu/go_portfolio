@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"os"
 
 	// "encoding/json"
+	"archive/zip"
 	"flag"
 	"fmt"
 	"html/template"
@@ -45,7 +48,7 @@ var ps Pages
 // Load the content from the mongodb and stores it in ps slice
 func loadContent() {
 
-	//CHECK FOR ENV VARIABLE
+	// CHECK FOR ENV VARIABLE
 	// mongoURI, ok := os.LookupEnv("MONGO_URI")
 	// if !ok {
 	// 	log.Fatal("MONGO_URI environment variable not set")
@@ -66,7 +69,35 @@ func loadContent() {
 		log.Fatal(err)
 	}
 
+	//drop databse
+	client.Database("go_portfolio").Drop(context.Background())
+
+	//create the databse and collection if not exist
+	db := client.Database("go_portfolio")
+	db.CreateCollection(context.Background(), "projects")
+
 	myProjects := client.Database("go_portfolio").Collection("projects")
+
+	// Read the JSON file
+	data, err := ioutil.ReadFile("extracted/projects.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Unmarshal the JSON into a struct
+	var dataList []Page
+	err = json.Unmarshal(data, &dataList)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Insert the struct into the MongoDB collection
+	for _, d := range dataList {
+		_, err := myProjects.InsertOne(context.TODO(), d)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	//get all projects
 	cursor, err := myProjects.Find(context.TODO(), bson.M{})
@@ -86,6 +117,52 @@ func loadContent() {
 
 	}
 
+}
+
+func loadZip() {
+	r, err := zip.OpenReader("example.zip")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer r.Close()
+
+	// Iterieren Sie durch die Dateien in der ZIP-Datei
+	for _, f := range r.File {
+		// Öffnen Sie jede Datei
+		rc, err := f.Open()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer rc.Close()
+
+		// Set the target path based on the file name
+		var path string
+		if f.Name == "projects.json" {
+			path = filepath.Join("extracted", f.Name)
+		} else if filepath.Dir(f.Name) == "images" {
+			path = filepath.Join("static", "img", filepath.Base(f.Name))
+		} else {
+			path = filepath.Join("extracted", f.Name)
+		}
+
+		// Create the target directory, if it does not exist
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(path, f.Mode())
+		} else {
+			// Create the file
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer f.Close()
+
+			// Write the contents of the opened file to the target
+			_, err = io.Copy(f, rc)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
 }
 
 // Exports all sites to the ./out directory
@@ -125,7 +202,7 @@ func staticExporter() {
 // Start the server and handle the requests
 // Sets the directory for static files
 func main() {
-
+	loadZip()
 	loadContent()
 	staticExporter()
 

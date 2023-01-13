@@ -10,12 +10,13 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy the source code to the working directory
+#TODO Can this be deleted?
 COPY . .
 
 # Build the Go application for Linux
 RUN GOOS=linux GOARCH=amd64 go build -o main .
 
-# Expose the port 8000 to the outside world
+# Expose the port 9000 to the outside world
 EXPOSE 9000
 
 # Run the Go application
