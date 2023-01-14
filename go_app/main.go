@@ -1,35 +1,24 @@
 package main
 
 import (
+	"archive/zip"
 	"context"
 	"encoding/json"
-	"io/ioutil"
-	"os"
-
-	// "encoding/json"
-	"archive/zip"
 	"flag"
 	"fmt"
 	"html/template"
 	"io"
-
-	// "io/ioutil"
+	"io/ioutil"
 	"log"
 	"net/http"
-
+	"os"
 	"path/filepath"
 	"time"
-
-	// "github.com/russross/blackfriday/v2"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-)
-
-var (
-	tmpDir = flag.String("tmp", "./templates", "Template -Dir.")
 )
 
 // All the data that is needed for the template
@@ -41,25 +30,50 @@ type Page struct {
 	Date        string `bson:"date"`
 }
 
+
 type Pages []Page
 
 var ps Pages
 
+// Start the server and handle the requests
+// Sets the directory for static files
+func main() {
+	loadZip()
+	loadContentFromDB()
+	staticExporter()
+
+	flag.Parse()
+	fs := http.FileServer(http.Dir("./static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	http.HandleFunc("/", makeIndexHandler())
+	http.HandleFunc("/projects/", makeProjectHandler())
+
+	//start the server
+	log.Print("Listening on :9000 ....")
+	err := http.ListenAndServe(":9000", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
 // Load the content from the mongodb and stores it in ps slice
-func loadContent() {
+func loadContentFromDB() {
 
 	// CHECK FOR ENV VARIABLE
-	// mongoURI, ok := os.LookupEnv("MONGO_URI")
-	// if !ok {
-	// 	log.Fatal("MONGO_URI environment variable not set")
-	// }
+	mongoURI, ok := os.LookupEnv("MONGO_URI")
+	if !ok {
+		// log.Fatal("MONGO_URI environment variable not set")
+		mongoURI = "mongodb://127.0.0.1:21017/"
+	}
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(), 10*time.Second)
 	defer cancel()
 	//replace with mongoUIR string
 	//"mongodb://127.0.0.1:21017/"
-	opt := options.Client().ApplyURI("mongodb://127.0.0.1:21017/")
+	opt := options.Client().ApplyURI(mongoURI)
 	client, err := mongo.Connect(ctx, opt)
 	if err != nil {
 		log.Fatal(err)
@@ -120,6 +134,7 @@ func loadContent() {
 }
 
 func loadZip() {
+
 	r, err := zip.OpenReader("example.zip")
 	if err != nil {
 		log.Fatal(err)
@@ -192,32 +207,9 @@ func staticExporter() {
 	}
 
 	//copy the static folder
-	err = copyDir("./static/", "out/static/")
+	err = copyDir("./static/", "./out/static/")
 	if err != nil {
 		panic(err)
-	}
-
-}
-
-// Start the server and handle the requests
-// Sets the directory for static files
-func main() {
-	loadZip()
-	loadContent()
-	staticExporter()
-
-	flag.Parse()
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
-
-	http.HandleFunc("/", makeIndexHandler())
-	http.HandleFunc("/projects/", makePageHandler())
-
-	//start the server
-	log.Print("Listening on :9000 ....")
-	err := http.ListenAndServe(":9000", nil)
-	if err != nil {
-		log.Fatal(err)
 	}
 
 }
@@ -225,17 +217,15 @@ func main() {
 // Here the index page is created with the index.templ.html
 func makeIndexHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		err := renderPage(w, ps, "index.templ.html")
 		if err != nil {
 			log.Println(err)
 		}
-
 	}
 }
 
 // Here the project page is created with the project.templ.html
-func makePageHandler() http.HandlerFunc {
+func makeProjectHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		//get the url and split it to get the project name
@@ -258,7 +248,7 @@ func makePageHandler() http.HandlerFunc {
 func renderPage(w io.Writer, data interface{}, content string) error {
 
 	temp, err := template.ParseFiles(
-		filepath.Join(*tmpDir, content),
+		filepath.Join("./templates", content),
 	)
 
 	if err != nil {
@@ -288,10 +278,8 @@ func loadPage(url string) (Page, error) {
 			p.Image_url = page.Image_url
 			p.Short = page.Short
 			p.Date = page.Date
-
 		}
 	}
-
 	return p, nil
 }
 

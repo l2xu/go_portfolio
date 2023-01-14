@@ -10,7 +10,6 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy the source code to the working directory
-#TODO Can this be deleted?
 COPY . .
 
 # Build the Go application for Linux

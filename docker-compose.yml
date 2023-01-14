@@ -9,7 +9,9 @@ services:
       - db
     environment:
       - MONGO_URI=mongodb://db:27017
-      
+    
+    volumes:
+      - ./out:/app/out
   db:
     image: mongo:latest
     ports:
