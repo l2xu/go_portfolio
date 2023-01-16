@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"html/template"
 	"io"
@@ -30,35 +29,73 @@ type Page struct {
 	Date        string `bson:"date"`
 }
 
-
 type Pages []Page
 
 var ps Pages
 
-// Start the server and handle the requests
-// Sets the directory for static files
 func main() {
 	loadZip()
 	loadContentFromDB()
-	staticExporter()
 
-	flag.Parse()
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	// CHECK FOR ENV VARIABLE
+	static, ok := os.LookupEnv("STATIC")
+	if !ok {
+		static = "false"
+	}
+	if static == "true" {
+		staticExporter()
+	}
 
-	http.HandleFunc("/", makeIndexHandler())
-	http.HandleFunc("/projects/", makeProjectHandler())
+	startServer()
+}
 
-	//start the server
-	log.Print("Listening on :9000 ....")
-	err := http.ListenAndServe(":9000", nil)
+func loadZip() {
+
+	r, err := zip.OpenReader("input/input.zip")
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer r.Close()
 
+	// Iterieren Sie durch die Dateien in der ZIP-Datei
+	for _, f := range r.File {
+		// Öffnen Sie jede Datei
+		rc, err := f.Open()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer rc.Close()
+
+		// Set the target path based on the file name
+		var path string
+		if f.Name == "projects.json" {
+			path = filepath.Join("extracted", f.Name)
+		} else if filepath.Dir(f.Name) == "images" {
+			path = filepath.Join("static", "img", filepath.Base(f.Name))
+		} else {
+			path = filepath.Join("extracted", f.Name)
+		}
+
+		// Create the target directory, if it does not exist
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(path, f.Mode())
+		} else {
+			// Create the file
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer f.Close()
+
+			// Write the contents of the opened file to the target
+			_, err = io.Copy(f, rc)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
 }
 
-// Load the content from the mongodb and stores it in ps slice
 func loadContentFromDB() {
 
 	// CHECK FOR ENV VARIABLE
@@ -130,57 +167,8 @@ func loadContentFromDB() {
 		ps = append(ps, p)
 
 	}
-
 }
 
-func loadZip() {
-
-	r, err := zip.OpenReader("example.zip")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer r.Close()
-
-	// Iterieren Sie durch die Dateien in der ZIP-Datei
-	for _, f := range r.File {
-		// Öffnen Sie jede Datei
-		rc, err := f.Open()
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer rc.Close()
-
-		// Set the target path based on the file name
-		var path string
-		if f.Name == "projects.json" {
-			path = filepath.Join("extracted", f.Name)
-		} else if filepath.Dir(f.Name) == "images" {
-			path = filepath.Join("static", "img", filepath.Base(f.Name))
-		} else {
-			path = filepath.Join("extracted", f.Name)
-		}
-
-		// Create the target directory, if it does not exist
-		if f.FileInfo().IsDir() {
-			os.MkdirAll(path, f.Mode())
-		} else {
-			// Create the file
-			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer f.Close()
-
-			// Write the contents of the opened file to the target
-			_, err = io.Copy(f, rc)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-	}
-}
-
-// Exports all sites to the ./out directory
 func staticExporter() {
 
 	//create the index
@@ -211,8 +199,76 @@ func staticExporter() {
 	if err != nil {
 		panic(err)
 	}
-
 }
+func copyDir(src string, dst string) error {
+	// Create the destination directory
+	err := os.MkdirAll(dst, 0755)
+	if err != nil {
+		return err
+	}
+
+	// Walk through the source directory
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Compute the relative path of the file
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+
+		// Compute the destination path
+		dstPath := filepath.Join(dst, rel)
+
+		// Check if the file is a directory
+		if info.IsDir() {
+			// Create the directory
+			return os.MkdirAll(dstPath, info.Mode())
+		} else {
+			// Open the source file
+			srcFile, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer srcFile.Close()
+
+			// Create the destination file
+			dstFile, err := os.Create(dstPath)
+			if err != nil {
+				return err
+			}
+			defer dstFile.Close()
+
+			// Copy the file
+			_, err = io.Copy(dstFile, srcFile)
+			if err != nil {
+				return err
+			}
+
+			// Preserve the file's mode
+			return os.Chmod(dstPath, info.Mode())
+		}
+	})
+}
+
+func startServer() {
+
+	fs := http.FileServer(http.Dir("./static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	http.HandleFunc("/", makeIndexHandler())
+	http.HandleFunc("/projects/", makeProjectHandler())
+
+	//start the server
+	log.Print("Listening on :9000 ....")
+	err := http.ListenAndServe(":9000", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 
 // Here the index page is created with the index.templ.html
 func makeIndexHandler() http.HandlerFunc {
@@ -283,56 +339,3 @@ func loadPage(url string) (Page, error) {
 	return p, nil
 }
 
-// This function copies the static folder
-func copyDir(src string, dst string) error {
-	// Create the destination directory
-	err := os.MkdirAll(dst, 0755)
-	if err != nil {
-		return err
-	}
-
-	// Walk through the source directory
-	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Compute the relative path of the file
-		rel, err := filepath.Rel(src, path)
-		if err != nil {
-			return err
-		}
-
-		// Compute the destination path
-		dstPath := filepath.Join(dst, rel)
-
-		// Check if the file is a directory
-		if info.IsDir() {
-			// Create the directory
-			return os.MkdirAll(dstPath, info.Mode())
-		} else {
-			// Open the source file
-			srcFile, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			defer srcFile.Close()
-
-			// Create the destination file
-			dstFile, err := os.Create(dstPath)
-			if err != nil {
-				return err
-			}
-			defer dstFile.Close()
-
-			// Copy the file
-			_, err = io.Copy(dstFile, srcFile)
-			if err != nil {
-				return err
-			}
-
-			// Preserve the file's mode
-			return os.Chmod(dstPath, info.Mode())
-		}
-	})
-}

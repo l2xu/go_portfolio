@@ -9,9 +9,11 @@ services:
       - db
     environment:
       - MONGO_URI=mongodb://db:27017
+      - STATIC=true
     
     volumes:
       - ./out:/app/out
+      - ./input:/app/input
   db:
     image: mongo:latest
     ports:
