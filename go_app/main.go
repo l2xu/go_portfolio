@@ -1,5 +1,7 @@
+// Package main implements a webserver that loads a zip file and stores the content in a mongoDB database. Furthermore it serves the content as a static website if needed.
 package main
 
+// import all needed packages
 import (
 	"archive/zip"
 	"context"
@@ -20,7 +22,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-// All the data that is needed for the template
+// The Page struct represents the data of each project in the portfolio
 type Page struct {
 	Title       string `bson:"title"`
 	Short       string `bson:"short"`
@@ -29,15 +31,18 @@ type Page struct {
 	Date        string `bson:"date"`
 }
 
+// The Pages struct represents the data of all projects in the portfolio
 type Pages []Page
 
+// The ps variable of type Pages holds all projects in the portfolio
 var ps Pages
 
+// The main function got executed first and loads the zip file, stores the content in the database (exports the website as static if needed) and starts the server
 func main() {
 	loadZip()
 	loadContentFromDB()
 
-	// CHECK FOR ENV VARIABLE
+	// Check for environment variable STATIC
 	static, ok := os.LookupEnv("STATIC")
 	if !ok {
 		static = "false"
@@ -49,17 +54,18 @@ func main() {
 	startServer()
 }
 
+// The loadZip function reads the zip file and extracts the content to the extracted folder and the static/img folder
 func loadZip() {
-
+	// reads the zip file
 	r, err := zip.OpenReader("input/input.zip")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer r.Close()
 
-	// Iterieren Sie durch die Dateien in der ZIP-Datei
+	// Iterates through the files in the zip file
 	for _, f := range r.File {
-		// Öffnen Sie jede Datei
+		// Open the file in the zip file
 		rc, err := f.Open()
 		if err != nil {
 			log.Fatal(err)
@@ -68,6 +74,8 @@ func loadZip() {
 
 		// Set the target path based on the file name
 		var path string
+
+		// Stores the projects.json file in the extracted folder and the images in the static/img folder and all other files in the extracted folder
 		if f.Name == "projects.json" {
 			path = filepath.Join("extracted", f.Name)
 		} else if filepath.Dir(f.Name) == "images" {
@@ -96,25 +104,28 @@ func loadZip() {
 	}
 }
 
+// The loadContentFromDB function loads the content of the projects.json file into the database
 func loadContentFromDB() {
 
-	// CHECK FOR ENV VARIABLE
+	// Check for environment variable MONGO_URI
 	mongoURI, ok := os.LookupEnv("MONGO_URI")
 	if !ok {
-		// log.Fatal("MONGO_URI environment variable not set")
-		mongoURI = "mongodb://127.0.0.1:21017/"
+		log.Fatal("MONGO_URI environment variable not set")
+		// mongoURI = "mongodb://127.0.0.1:21017/"
 	}
 
+	// Sets the context for the connection to the database
 	ctx, cancel := context.WithTimeout(
 		context.Background(), 10*time.Second)
 	defer cancel()
-	//replace with mongoUIR string
-	//"mongodb://127.0.0.1:21017/"
+
+	// Connect to the database
 	opt := options.Client().ApplyURI(mongoURI)
 	client, err := mongo.Connect(ctx, opt)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	// check for connection
 	if err := client.Ping(ctx, readpref.Primary()); err != nil {
 		log.Fatal(err)
@@ -123,13 +134,14 @@ func loadContentFromDB() {
 	//drop databse
 	client.Database("go_portfolio").Drop(context.Background())
 
-	//create the databse and collection if not exist
+	//create the databse and collection
 	db := client.Database("go_portfolio")
 	db.CreateCollection(context.Background(), "projects")
 
+	// Get the collection
 	myProjects := client.Database("go_portfolio").Collection("projects")
 
-	// Read the JSON file
+	// Read the JSON file that was extracted from the zip file
 	data, err := ioutil.ReadFile("extracted/projects.json")
 	if err != nil {
 		log.Fatal(err)
@@ -150,14 +162,14 @@ func loadContentFromDB() {
 		}
 	}
 
-	//get all projects
+	//get all projects from the database 
 	cursor, err := myProjects.Find(context.TODO(), bson.M{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	//iterate through all projects and append them to the ps variable
 	for cursor.Next(context.TODO()) {
-
 		var p Page
 		err := cursor.Decode(&p)
 		if err != nil {
@@ -165,25 +177,25 @@ func loadContentFromDB() {
 		}
 
 		ps = append(ps, p)
-
 	}
 }
 
+// The staticExporter function exports the website as static files and stores them in the out folder if the STATIC environment variable is set to true in the docker-compose file
 func staticExporter() {
 
-	//create the index
+	//create the index page
 	f, err := os.Create("./out/index.html")
 	if err != nil {
 		panic(err)
 	}
 
+	//render the index page
 	renderPage(f, ps, "index.templ.html")
 
 	//create a directory for the projects
 	err = os.Mkdir("./out/projects", 0755)
 
-	//create all other pages
-	//go through all projects
+	//go through all projects and create a page for each project
 	for _, p := range ps {
 		filename := fmt.Sprintf("./out/projects/%s.html", p.Title)
 		f, err := os.Create(filename)
@@ -200,6 +212,10 @@ func staticExporter() {
 		panic(err)
 	}
 }
+
+// The copyDir function copies the static folder to the out folder
+// The function takes the source and destination folder as arguments in the form of strings
+// The function returns an error if the source folder does not exist
 func copyDir(src string, dst string) error {
 	// Create the destination directory
 	err := os.MkdirAll(dst, 0755)
@@ -253,11 +269,14 @@ func copyDir(src string, dst string) error {
 	})
 }
 
+// The startServer function starts the server and listens on port 9000
 func startServer() {
 
+	//serve the static files
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
+	//create the handlers for the index and project pages
 	http.HandleFunc("/", makeIndexHandler())
 	http.HandleFunc("/projects/", makeProjectHandler())
 
@@ -269,10 +288,10 @@ func startServer() {
 	}
 }
 
-
-// Here the index page is created with the index.templ.html
+// The makeIndexHandler function creates the index page
 func makeIndexHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		//render the index page with the index.templ.html template
 		err := renderPage(w, ps, "index.templ.html")
 		if err != nil {
 			log.Println(err)
@@ -280,7 +299,7 @@ func makeIndexHandler() http.HandlerFunc {
 	}
 }
 
-// Here the project page is created with the project.templ.html
+// The makeProjectHandler function creates the project page
 func makeProjectHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -288,11 +307,13 @@ func makeProjectHandler() http.HandlerFunc {
 		url := r.URL.Path
 		url = url[10:]
 
+		//load the project page according to the project name
 		p, err := loadPage(url)
-
 		if err != nil {
 			log.Println(err)
 		}
+
+		//render the project page with the project.templ.html template
 		err = renderPage(w, p, "project.templ.html")
 		if err != nil {
 			log.Println(err)
@@ -300,18 +321,21 @@ func makeProjectHandler() http.HandlerFunc {
 	}
 }
 
-// Here the template page is rendered
+// The renderPage function renders the page with the given template and data
+// The function takes the writer, the data and the template as arguments in the form of interfaces and strings
+// The function returns an error if the template cannot be parsed or executed or if the template does not exist and returns nil if the template is successfully executed
 func renderPage(w io.Writer, data interface{}, content string) error {
 
+	//parse the template 
 	temp, err := template.ParseFiles(
 		filepath.Join("./templates", content),
 	)
-
 	if err != nil {
 		return fmt.Errorf("renderPage.Parsefiles: %w", err)
 	}
-	err = temp.ExecuteTemplate(w, content, data)
 
+	//execute the template
+	err = temp.ExecuteTemplate(w, content, data)
 	if err != nil {
 		return fmt.Errorf("renderPage.ExecuteTemplate: %w", err)
 	}
@@ -319,16 +343,20 @@ func renderPage(w io.Writer, data interface{}, content string) error {
 	return nil
 }
 
-// here the struct get filled with data
+// The loadPage function loads the project page according to the project name
+// The function takes the url as an argument in the form of a string
+// The function returns the page and an error if the project name does not exist or returns the page and nil if the project name exists
 func loadPage(url string) (Page, error) {
+
+	//create a new page
 	var p Page
 
-	//search for the project in the struct
+	//search for the right project in the projects slice and assign the values to the new page (using the project name)
 	for _, page := range ps {
 		fmt.Print(page.Title)
-		peter := page.Title + ".html"
+		fullTitle := page.Title + ".html"
 
-		if peter == url {
+		if fullTitle == url {
 			p.Title = page.Title
 			p.Description = page.Description
 			p.Image_url = page.Image_url
@@ -338,4 +366,3 @@ func loadPage(url string) (Page, error) {
 	}
 	return p, nil
 }
-
