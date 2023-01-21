@@ -63,6 +63,13 @@ func loadZip() {
 	}
 	defer r.Close()
 
+
+	//Create the extracted folder if it does not exist
+	if _, err := os.Stat("extracted"); os.IsNotExist(err) {
+		os.Mkdir("extracted", 0755)
+	}
+	
+
 	// Iterates through the files in the zip file
 	for _, f := range r.File {
 		// Open the file in the zip file
